@@ -1,7 +1,8 @@
-import axios from "axios";
 import { useContext, useState } from 'react'
-import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import axios from "axios";
+
 import { userContext } from "./UserContext";
 import ChildForm from "./ChildForm"
 
@@ -12,7 +13,7 @@ export default function UserForm() {
     const [hasChildren, setHasChildren] = useState(false);
     const [isToAddForm, setIsToAddForm] = useState(false);
     const [isShowApproval, setIsShowApproval] = useState(false);
-    const [isUserAppear, setIsUserAppear] = useState(false);
+    const [isUserAppear, setIsUserAppear] = useState('');
 
 
     const { register, handleSubmit, formState: { errors } } = useForm();
@@ -24,8 +25,19 @@ export default function UserForm() {
     const OnSubmit = (data) => {
         //בדיקה אם התעודת זהות קימת במערכת
         axios.get(`https://localhost:44381/api/User/tz/${data.tz}`)
-            .then(() => setIsUserAppear(true)
-            ).catch(error => { setIsUserAppear(false) })
+
+            .then(res => {
+                if (res.data.tz === '')
+                    setIsUserAppear(true)
+                else
+                    setIsUserAppear(false)
+            }
+
+            ).catch(error => {
+                console.log(error)
+            })
+
+
 
         isUserAppear === false ?
             <div>
@@ -33,21 +45,32 @@ export default function UserForm() {
                     axios.post("https://localhost:44381/api/User", {
                         FirstName: data.firstName, LastName: data.familyName, Tz: data.tz,
                         DateOfBirth: data.dateOfBirth, Gender: parseInt(data.chooseGender), HMO: data.chooseHMO
+                    }).then(r => {
+
+                        axios.get(`https://localhost:44381/api/User/tz/${data.tz}`)
+                            .then(res => {
+                                console.log("update tz father")
+                                for (let index = 0; index < userCtx.childrenArr.length; index++) {
+                                    axios.post("https://localhost:44381/api/UserChild", {
+                                        FirstName: userCtx.childrenArr[index].FirstName, LastName: userCtx.childrenArr[index].LastName, 
+                                        Tz: userCtx.childrenArr[index].Tz, DateOfBirth: userCtx.childrenArr[index].DateOfBirth, IdParent: res.data.id
+
+                                    }).then(suc => {
+                                        console.log(suc.data)
+                                        console.log("update child")
+                                    }).catch(error =>
+                                        console.log(error))
+                                }
+
+                            }).catch(error => console.log(error))
                     }),
 
-                    axios.get(`https://localhost:44381/api/User/tz/${data.tz}`)
-                        .then(res => {
-                            console.log("datatz", res.data)
-                            console.log("idtz", res.data.id)
-                            userCtx.setIdParent(res.data.id)
-                            console.log(userCtx.idParent)
-                            console.log(userCtx.idParent)
-                        }).catch(error => console.log(error)),
-
                     isShowApproval ?
-                        <div>{
-                            navigateApproval(`/approval/`)
-                        }
+
+                        <div>
+                            {
+                                navigateApproval(`/approval/`)
+                            }
                         </div>
                         :
                         <>
@@ -58,18 +81,12 @@ export default function UserForm() {
             <>
                 {alert("משתמש קים במערכת")}
             </>
-        for (let index = 0; index < userCtx.childrenArr.length; index++) {
-            axios.post("https://localhost:44381/api/UserChild", {
-                FirstName: userCtx.childrenArr[index].FirstName, LastName: userCtx.childrenArr[index].LastName, Tz: userCtx.childrenArr[index].Tz,
-                DateOfBirth: userCtx.childrenArr[index].DateOfBirth, IdParent: userCtx.idParent
-            }).then(suc => console.log(suc.data))
-                .catch(error => console.log(error))
-        }
     }
-   
+
     return (
         <div>
             <form className="d-grid gap-4 col-5 mx-auto card  p-3 mb-2 bg-success text-white" onSubmit={handleSubmit(OnSubmit)}>
+
                 <div className="mb-1">
                     <input form="Form1" name="firstName" type="text" placeholder="שם פרטי" className="rounded text-end border-dark" defaultValue={userCtx.firstName}
                         onInput={(e) => {
@@ -80,6 +97,7 @@ export default function UserForm() {
                     {errors?.firstName?.type === "maxLength" && <p>{"אורך השם עולה על 15 תווים"}</p>}
                 </div>
 
+
                 <div className="mb-1">
                     <input name="familyName" type="text" placeholder="שם משפחה" className="rounded text-end border-dark" defaultValue={userCtx.lastName}
                         onInput={(e) => { userCtx.setLastName(e.target.value) }}
@@ -87,6 +105,7 @@ export default function UserForm() {
                     {errors?.familyName?.type === "required" && <p>{"זהו שדה חובה"}</p>}
                     {errors?.familyName?.type === "maxLength" && <p>{"אורך השם עולה על 15 תווים"}</p>}
                 </div>
+
 
                 <div className="mb-1">
                     <input name="tz" type="text" placeholder="תעודת זהות" className="rounded text-end border-dark" defaultValue={userCtx.tz}
@@ -97,12 +116,14 @@ export default function UserForm() {
                     {errors?.tz?.type === "maxLength" && <p>{"הקש תעודת זהות בעלת 9 תווים"}</p>}
                 </div>
 
+
                 <div className="mb-1">
                     <input name="dateOfBirth" type="date" placeholder="תאריך לידה" className="rounded text-end border-dark" defaultValue={userCtx.dateOfBirth}
                         onInput={(e) => { userCtx.setDateOfBirth(e.target.value) }}
                         {...register("dateOfBirth", { required: true })} />
                     {errors?.dateOfBirth?.type === "required" && <p>{"זהו שדה חובה"}</p>}
                 </div>
+
 
                 <label>בחר מין </label>
                 <div className="mb-1">
@@ -113,7 +134,10 @@ export default function UserForm() {
                         <option value="2">נקבה</option>
                     </select>
                 </div>
+
+
                 <label>בחר קופת חולים</label>
+
                 <div className="mb-1">
                     <select name="chooseHMO"  {...register("chooseHMO", { required: true })}
                         defaultValue={userCtx.HMO} onInput={(e) => { userCtx.setHMO(e.target.value) }}>
@@ -124,13 +148,18 @@ export default function UserForm() {
                         <option value="nothing">אחר</option>
                     </select>
                 </div>
+
+
                 <label>?האם יש לך ילדים</label>
+
                 <div className="mb-1">
                     <select name="haveChildren" onChange={(e) => { e.target.value === "yes" ? setHasChildren(true) : setHasChildren(false) }}>
                         <option className="dropdown-item" value="no">לא</option>
                         <option className="dropdown-item" value="yes">כן</option>
                     </select>
                 </div >
+
+
                 {
                     hasChildren ?
                         <>
@@ -149,15 +178,20 @@ export default function UserForm() {
                         :
                         <div></div>
                 }
+
+
                 <div className="mb-1">
                     <button onClick={() => setIsShowApproval(true)} className="btn btn-outline-light " type="submit">לשליחה</button>
                 </div>
+
+
             </form >
+
             <button className="btn btn-success sticky-xxl-top" onClick={() => {
                 navigateExplanation(`/`)
             }}>לדף ההנחיות</button>
+
         </div>
     )
-
 }
-        
+

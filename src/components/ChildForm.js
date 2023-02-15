@@ -1,4 +1,5 @@
 import { useContext } from "react"
+
 import { userContext } from "./UserContext";
 
 
@@ -7,10 +8,10 @@ export default function ChildForm(props) {
     const childCtx = useContext(userContext);
 
     const AddChild = () => {
-        childCtx.childrenArr.push({
+        childCtx.setChildrenArr([ ...childCtx.childrenArr,{
             FirstName: childCtx.ChildFirstName, LastName: childCtx.ChildLastName, Tz: childCtx.ChildTz,
             DateOfBirth: childCtx.ChildDateOfBirth
-        })
+        }])
         props.ToAddForm(false)
     }
 

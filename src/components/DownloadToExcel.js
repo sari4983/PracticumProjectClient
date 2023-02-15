@@ -1,8 +1,11 @@
-import * as XLSX from 'xlsx'
-import { userContext } from './UserContext';
 import { useContext } from 'react';
+import * as XLSX from 'xlsx';
+
+import { userContext } from './UserContext';
+
 
 const DownloadToExcel = () => {
+
   const userCtx=useContext(userContext)
 
   var data = JSON.parse('['+JSON.stringify(userCtx)+']')
